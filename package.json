@@ -82,7 +82,7 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.js"
   },
   "dependencies": {
-    "@fiduswriter/document": "file:../fiduswriter-document",
+    "@fiduswriter/document": "^0.2.0",
     "@vivliostyle/print": "^2.42.0",
     "biblatex-csl-converter": "^3.0.0",
     "downloadjs": "^1.4.7",

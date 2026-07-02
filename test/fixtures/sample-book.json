@@ -1,0 +1,23 @@
+{
+  "id": 42,
+  "title": "Sample Book",
+  "path": "/",
+  "metadata": {
+    "author": "Jane Doe",
+    "subtitle": "A Test Volume",
+    "publisher": "Test Press",
+    "copyright": "© 2024 Jane Doe",
+    "keywords": "testing, books"
+  },
+  "settings": {
+    "language": "en-US",
+    "papersize": "A4",
+    "book_style": ""
+  },
+  "chapters": [
+    { "text": 1, "number": 1, "part": "Part One" },
+    { "text": 2, "number": 2, "part": "" }
+  ],
+  "docx_template": "template.docx",
+  "odt_template": "template.odt"
+}

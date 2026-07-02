@@ -10,7 +10,6 @@ import {NativeImporter} from "@fiduswriter/document/importer/native"
 import {addAlert} from "fwtoolkit"
 
 import type {BookImporterBackend, Chapter, User} from "../../types.js"
-import {readFidusBookFile} from "./reader.js"
 
 export {FIDUSBOOK_VERSION} from "./reader.js"
 export {readFidusBookFile, FidusBookReader} from "./reader.js"
@@ -103,7 +102,7 @@ export class NativeBookImporter {
                         }
                     })
             )
-        } catch (error) {
+        } catch (_error) {
             this.statusText = gettext(
                 "The uploaded file does not appear to be a Fidusbook file."
             )

@@ -5,7 +5,7 @@
  * chapter and delegates creation of the book record to a `BookImporterBackend`.
  */
 
-import type {NativeImporterBackend} from "@fiduswriter/document"
+import type {E2EEOptions, NativeImporterBackend} from "@fiduswriter/document"
 import {NativeImporter} from "@fiduswriter/document/importer/native"
 import {addAlert} from "fwtoolkit"
 
@@ -14,12 +14,31 @@ import type {BookImporterBackend, Chapter, User} from "../../types.js"
 export {FIDUSBOOK_VERSION} from "./reader.js"
 export {readFidusBookFile, FidusBookReader} from "./reader.js"
 
+export interface E2EEOptionsResult {
+    options: E2EEOptions
+    password: string
+}
+
+export interface NativeBookImporterOptions {
+    path?: string
+    getE2EEOptions?: () => Promise<E2EEOptionsResult | null>
+    onChapterImported?: (
+        doc: Record<string, unknown>,
+        password: string
+    ) => Promise<void>
+}
+
 export class NativeBookImporter {
     file: Blob
     user: User
     path: string
     nativeBackend: NativeImporterBackend
     bookBackend: BookImporterBackend
+    getE2EEOptions?: () => Promise<E2EEOptionsResult | null>
+    onChapterImported?: (
+        doc: Record<string, unknown>,
+        password: string
+    ) => Promise<void>
 
     ok: boolean
     statusText: string
@@ -30,13 +49,16 @@ export class NativeBookImporter {
         user: User,
         nativeBackend: NativeImporterBackend,
         bookBackend: BookImporterBackend,
-        path = "/"
+        options: string | NativeBookImporterOptions = "/"
     ) {
+        const opts = typeof options === "string" ? {path: options} : options
         this.file = file
         this.user = user
-        this.path = path.endsWith("/") ? path : path + "/"
+        this.path = opts.path?.endsWith("/") ? opts.path : `${opts.path || "/"}/`
         this.nativeBackend = nativeBackend
         this.bookBackend = bookBackend
+        this.getE2EEOptions = opts.getE2EEOptions
+        this.onChapterImported = opts.onChapterImported
 
         this.ok = false
         this.statusText = ""
@@ -190,6 +212,11 @@ export class NativeBookImporter {
             const safeBookTitle = (bookData.title as string) || "Untitled"
             const chapterPath = `${this.path}${safeBookTitle}/${(docJson.title as string) || "Untitled"}`
 
+            let e2eeResult: E2EEOptionsResult | null = null
+            if (this.getE2EEOptions) {
+                e2eeResult = await this.getE2EEOptions()
+            }
+
             const importer = new NativeImporter(
                 docJson,
                 bibJson,
@@ -198,7 +225,8 @@ export class NativeBookImporter {
                 this.user,
                 this.nativeBackend,
                 {
-                    requestedPath: chapterPath
+                    requestedPath: chapterPath,
+                    e2eeOptions: e2eeResult?.options ?? null
                 }
             )
 
@@ -216,6 +244,10 @@ export class NativeBookImporter {
             }
 
             importedDocIds[ci] = doc.id as number
+
+            if (e2eeResult && this.onChapterImported) {
+                await this.onChapterImported(doc, e2eeResult.password)
+            }
         }
 
         const chapters: Chapter[] = sortedChapters.map(chapter => ({

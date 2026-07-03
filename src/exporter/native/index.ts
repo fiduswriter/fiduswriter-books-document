@@ -6,7 +6,7 @@ import type {Schema} from "prosemirror-model"
 import {ShrinkFidus} from "@fiduswriter/document/exporter/native/shrink"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
 import {ZipFileCreator} from "@fiduswriter/document/exporter/tools/zip"
-import {addAlert} from "fwtoolkit"
+import {addAlert, gettext} from "fwtoolkit"
 
 import {FIDUSBOOK_VERSION} from "../../schema/index.js"
 import type {Book, DocumentListEntry, User} from "../../types.js"

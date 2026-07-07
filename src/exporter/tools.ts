@@ -10,7 +10,8 @@
 import type {Schema} from "prosemirror-model"
 import {getSettings} from "@fiduswriter/document/schema/convert"
 import {acceptAllNoInsertions} from "@fiduswriter/document/transform"
-import {addAlert} from "fwtoolkit"
+import {gettext} from "fwtoolkit"
+import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 
 import type {
     ChapterLoader,
@@ -58,30 +59,35 @@ export async function getMissingChapterData(
         rawContent?: boolean
         loader?: ChapterLoader
         e2ee?: E2EEStrategy
+        progressCallback?: ProgressCallback
     } = {}
 ): Promise<void> {
-    const {rawContent = false, loader = noopChapterLoader, e2ee = noopE2EEStrategy} =
-        options
+    const {
+        rawContent = false,
+        loader = noopChapterLoader,
+        e2ee = noopE2EEStrategy,
+        progressCallback
+    } = options
+
+    progressCallback?.(gettext("Loading chapter data..."), 0)
 
     const bookDocuments = book.chapters.map(chapter =>
         documentList.find(doc => doc.id === chapter.text)
     )
 
     if (bookDocuments.some(doc => doc === undefined)) {
-        addAlert(
-            "error",
+        throw new Error(
             gettext(
                 "Cannot produce book as you lack access rights to its chapters."
             )
-        )
-        throw new Error(
-            "Cannot produce book as you lack access rights to its chapters."
         )
     }
 
     const docIds = book.chapters.map(chapter => chapter.text)
     await loader.loadChapters(docIds, documentList, schema, rawContent)
     await decryptE2EEChapters(book, documentList, schema, rawContent, e2ee)
+
+    progressCallback?.(gettext("Chapter data loaded."), 50)
 }
 
 /**
@@ -106,13 +112,11 @@ async function decryptE2EEChapters(
 
     const unlocked = await e2ee.ensurePassphraseUnlocked()
     if (!unlocked) {
-        addAlert(
-            "error",
+        throw new Error(
             gettext(
                 "A personal passphrase is required to work with books that contain encrypted chapters. Please set up or unlock your personal passphrase in your profile settings."
             )
         )
-        throw new Error("Passphrase required for encrypted chapters")
     }
 
     await Promise.all(
@@ -127,11 +131,9 @@ async function decryptE2EEChapters(
 
             const password = await e2ee.getDocumentPassword(Number(doc.id))
             if (!password) {
-                addAlert(
-                    "error",
+                throw new Error(
                     `${gettext("No encryption key found for chapter:")} ${chapterLabel}. ${gettext("The key may not have been shared with you.")}`
                 )
-                throw new Error(`No encryption key for document ${String(doc.id)}`)
             }
 
             if (!doc.e2ee_salt) {
@@ -213,11 +215,9 @@ async function decryptE2EEChapters(
                 ) {
                     throw err
                 }
-                addAlert(
-                    "error",
+                throw new Error(
                     `${gettext("Could not decrypt chapter:")} ${chapterLabel}. ${gettext("The document may have been re-encrypted with a different password.")}`
                 )
-                throw err
             }
         })
     )

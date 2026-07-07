@@ -5,10 +5,11 @@
 import type {Schema} from "prosemirror-model"
 import {HTMLExporterConvert} from "@fiduswriter/document/exporter/html/convert"
 import {htmlExportTemplate} from "@fiduswriter/document/exporter/html/templates"
+import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {removeHidden} from "@fiduswriter/document/exporter/tools/doc_content"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
 import {ZipFileCreator} from "@fiduswriter/document/exporter/tools/zip"
-import {addAlert, get, staticUrl} from "fwtoolkit"
+import {gettext, get, staticUrl} from "fwtoolkit"
 import pretty from "pretty"
 
 import type {Book, BookStyles, CSL, DocumentListEntry, User} from "../../types.js"
@@ -83,6 +84,7 @@ export class EpubBookExporter {
     contentItems: Array<Record<string, unknown>>
     includeZips: IncludeZip[]
     math: boolean
+    progressCallback?: ProgressCallback
 
     constructor(
         schema: Schema,
@@ -111,16 +113,21 @@ export class EpubBookExporter {
         this.math = false
     }
 
-    async init(): Promise<Blob | false> {
+    async init(progressCallback?: ProgressCallback): Promise<Blob | false> {
+        this.progressCallback = progressCallback
+        this.progressCallback?.(
+            gettext("Epub book export has been initiated."),
+            0
+        )
         if (this.book.chapters.length === 0) {
-            addAlert(
-                "error",
+            throw new Error(
                 gettext("Book cannot be exported due to lack of chapters.")
             )
-            return false
         }
 
-        await getMissingChapterData(this.book, this.docList, this.schema)
+        await getMissingChapterData(this.book, this.docList, this.schema, {
+            progressCallback: this.progressCallback
+        })
 
         this.addBookStyle()
         return this.exportContents()
@@ -153,6 +160,7 @@ export class EpubBookExporter {
     }
 
     async exportContents(): Promise<Blob> {
+        this.progressCallback?.(gettext("Preparing Epub book..."), 10)
         await Promise.all(
             this.styleSheets.map(async sheet => this.loadStyle(sheet))
         )
@@ -262,6 +270,8 @@ export class EpubBookExporter {
                     })
             )
         ).filter((chapter): chapter is ChapterOutput => chapter !== false)
+
+        this.progressCallback?.(gettext("Assembling Epub book..."), 80)
 
         this.textFiles.push({
             filename: "copyright.xhtml",
@@ -405,6 +415,7 @@ export class EpubBookExporter {
     }
 
     async createZip(): Promise<Blob> {
+        this.progressCallback?.(gettext("Finalizing Epub book..."), 90)
         const zipper = new ZipFileCreator(
             this.textFiles,
             this.httpFiles,
@@ -413,6 +424,7 @@ export class EpubBookExporter {
             new Date(this.updated * 1000)
         )
         const blob = await zipper.init()
+        this.progressCallback?.(gettext("Epub book export complete."), 100)
         return this.download(blob)
     }
 

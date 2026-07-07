@@ -4,11 +4,13 @@
 
 import type {Schema} from "prosemirror-model"
 import type {User} from "@fiduswriter/document"
+import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {BibLatexExporter} from "biblatex-csl-converter"
 import {LatexExporterConvert} from "@fiduswriter/document/exporter/latex/convert"
 import {removeHidden} from "@fiduswriter/document/exporter/tools/doc_content"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
 import {ZipFileCreator} from "@fiduswriter/document/exporter/tools/zip"
+import {gettext} from "fwtoolkit"
 
 import type {Book, DocumentListEntry} from "../../types.js"
 import {getMissingChapterData} from "../tools.js"
@@ -33,6 +35,7 @@ export class LatexBookExporter {
     textFiles: TextFile[]
     httpFiles: HttpFile[]
     zipFileName: string
+    progressCallback?: ProgressCallback
 
     constructor(
         schema: Schema,
@@ -53,13 +56,19 @@ export class LatexBookExporter {
         this.zipFileName = ""
     }
 
-    init(): Promise<Blob> {
+    init(progressCallback?: ProgressCallback): Promise<Blob> {
+        this.progressCallback = progressCallback
+        this.progressCallback?.(
+            gettext("LaTeX book export has been initiated."),
+            0
+        )
         return getMissingChapterData(this.book, this.docList, this.schema).then(
             () => this.export()
         )
     }
 
     export(): Promise<Blob> {
+        this.progressCallback?.(gettext("Preparing LaTeX book..."), 10)
         this.zipFileName = `${createSlug(this.book.title)}.latex.zip`
         let bibIds: string[] = []
         let imageIds: string[] = []
@@ -140,6 +149,7 @@ export class LatexBookExporter {
     }
 
     createZip(): Promise<Blob> {
+        this.progressCallback?.(gettext("Finalizing LaTeX book..."), 90)
         const zipper = new ZipFileCreator(
             this.textFiles,
             this.httpFiles,
@@ -148,7 +158,10 @@ export class LatexBookExporter {
             this.updated
         )
 
-        return zipper.init().then(blob => this.download(blob))
+        return zipper.init().then(blob => {
+            this.progressCallback?.(gettext("LaTeX book export complete."), 100)
+            return this.download(blob)
+        })
     }
 
     download(blob: Blob): Blob {

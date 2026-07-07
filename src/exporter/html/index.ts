@@ -4,11 +4,12 @@
 
 import type {Schema} from "prosemirror-model"
 import type {CSL, User} from "@fiduswriter/document"
+import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {HTMLExporter} from "@fiduswriter/document/exporter/html/index"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
 import {ZipFileCreator} from "@fiduswriter/document/exporter/tools/zip"
 import {LANGUAGES} from "@fiduswriter/document/schema/const"
-import {addAlert, get, staticUrl} from "fwtoolkit"
+import {gettext, get, staticUrl} from "fwtoolkit"
 import pretty from "pretty"
 
 import type {Book, BookStyle, BookStyles, DocumentListEntry} from "../../types.js"
@@ -74,6 +75,7 @@ export class HTMLBookExporter {
     singleFileHTMLBookTemplate: (...args: any[]) => string
     singleFileHTMLBookCSSTemplate: (...args: any[]) => string
     styleSheets: StyleSheet[]
+    progressCallback?: ProgressCallback
 
     constructor(
         schema: Schema,
@@ -112,16 +114,21 @@ export class HTMLBookExporter {
         this.styleSheets = [{url: staticUrl("css/book.css")}]
     }
 
-    async init(): Promise<Blob | false | void> {
+    async init(progressCallback?: ProgressCallback): Promise<Blob | false | void> {
+        this.progressCallback = progressCallback
+        this.progressCallback?.(
+            gettext("HTML book export has been initiated."),
+            0
+        )
         if (this.book.chapters.length === 0) {
-            addAlert(
-                "error",
+            throw new Error(
                 gettext("Book cannot be exported due to lack of chapters.")
             )
-            return false
         }
 
-        await getMissingChapterData(this.book, this.docList, this.schema)
+        await getMissingChapterData(this.book, this.docList, this.schema, {
+            progressCallback: this.progressCallback
+        })
 
         this.addBookStyle()
 
@@ -147,6 +154,7 @@ export class HTMLBookExporter {
     }
 
     async exportChapters(): Promise<Blob | void> {
+        this.progressCallback?.(gettext("Exporting book chapters..."), 20)
         let footnoteCounter = 0,
             affiliationCounter = 0,
             figureCounter = 0,
@@ -154,9 +162,11 @@ export class HTMLBookExporter {
             photoCounter = 0,
             tableCounter = 0
 
-        for (const chapterInfo of this.book.chapters.sort(
+        const sortedChapters = this.book.chapters.sort(
             (a, b) => a.number - b.number
-        )) {
+        )
+
+        for (const chapterInfo of sortedChapters) {
             const chapterNumber = chapterInfo.number
             const chapterPart = chapterInfo.part || ""
             const doc = this.docList.find(d => d.id === chapterInfo.text)
@@ -254,10 +264,12 @@ export class HTMLBookExporter {
             })
         }
 
+        this.progressCallback?.(gettext("Assembling HTML book..."), 80)
         return this.exportBook()
     }
 
     async exportBook(): Promise<Blob | void> {
+        this.progressCallback?.(gettext("Finalizing HTML book..."), 90)
         if (this.math) {
             this.includeZips.push({
                 directory: "css",
@@ -426,6 +438,7 @@ export class HTMLBookExporter {
             new Date(this.updated * 1000)
         )
         const blob = await zipper.init()
+        this.progressCallback?.(gettext("HTML book export complete."), 100)
         return this.download(blob)
     }
 

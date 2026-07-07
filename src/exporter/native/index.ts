@@ -6,11 +6,12 @@ import type {Schema} from "prosemirror-model"
 import {ShrinkFidus} from "@fiduswriter/document/exporter/native/shrink"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
 import {ZipFileCreator} from "@fiduswriter/document/exporter/tools/zip"
-import {addAlert, gettext} from "fwtoolkit"
+import {gettext} from "fwtoolkit"
 
 import {FIDUSBOOK_VERSION} from "../../schema/index.js"
 import type {Book, DocumentListEntry, User} from "../../types.js"
 import {getMissingChapterData} from "../tools.js"
+import type {ProgressCallback} from "@fiduswriter/document/exporter/native/shrink"
 
 interface FileInclude {
     url: string
@@ -31,40 +32,54 @@ export class NativeBookExporter {
     documentList: DocumentListEntry[]
     updated: any
 
+    progressCallback?: ProgressCallback
+
     constructor(
         schema: Schema,
         book: Book,
         user: User,
         documentList: DocumentListEntry[],
-        updated: any
+        updated: any,
+        progressCallback?: ProgressCallback
     ) {
         this.schema = schema
         this.book = book
         this.user = user
         this.documentList = documentList
         this.updated = updated
+        this.progressCallback = progressCallback
     }
 
-    init(): Promise<Blob> {
+    init(progressCallback?: ProgressCallback): Promise<Blob> {
+        if (progressCallback) {
+            this.progressCallback = progressCallback
+        }
         if (this.book.chapters.length === 0) {
-            addAlert(
-                "error",
-                gettext("Book cannot be exported due to lack of chapters.")
+            this.progressCallback?.(
+                gettext("Book cannot be exported due to lack of chapters."),
+                100
             )
             return Promise.resolve(new Blob([]))
         }
 
-        addAlert(
-            "info",
-            `${this.book.title}: ${gettext("Fidusbook export has been initiated.")}`
+        this.progressCallback?.(
+            `${this.book.title}: ${gettext("Fidusbook export has been initiated.")}`,
+            0
         )
 
         return getMissingChapterData(this.book, this.documentList, this.schema)
             .then(() => this.exportContents())
+            .then(blob => {
+                this.progressCallback?.(
+                    `${this.book.title}: ${gettext("Fidusbook export complete.")}`,
+                    100
+                )
+                return blob
+            })
             .catch(error => {
-                addAlert(
-                    "error",
-                    `${this.book.title}: ${gettext("Fidusbook export failed.")}`
+                this.progressCallback?.(
+                    `${this.book.title}: ${gettext("Fidusbook export failed.")}`,
+                    100
                 )
                 throw error
             })
@@ -113,11 +128,16 @@ export class NativeBookExporter {
                 return processChapter(index + 1)
             }
 
+            this.progressCallback?.(
+                gettext("Exporting chapter %s of %s..."),
+                Math.round((index / sortedChapters.length) * 90)
+            )
+
             const shrinker = new ShrinkFidus(
                 doc as any,
                 {db: doc.images || {}},
                 {db: doc.bibliography || {}},
-                true
+                this.progressCallback
             )
 
             return shrinker

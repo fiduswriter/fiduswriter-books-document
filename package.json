@@ -86,7 +86,7 @@
         "format:check": "prettier --check ."
     },
     "dependencies": {
-        "@fiduswriter/document": "^0.2.0",
+        "@fiduswriter/document": "^0.2.15",
         "@vivliostyle/print": "^2.42.0",
         "biblatex-csl-converter": "^3.0.0",
         "downloadjs": "^1.4.7",

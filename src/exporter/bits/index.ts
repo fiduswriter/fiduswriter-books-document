@@ -6,9 +6,10 @@ import type {Schema} from "prosemirror-model"
 import pretty from "pretty"
 import {JATSExporterConverter} from "@fiduswriter/document/exporter/jats/convert"
 import {darManifest} from "@fiduswriter/document/exporter/jats/templates"
+import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
 import {ZipFileCreator} from "@fiduswriter/document/exporter/tools/zip"
-import {addAlert} from "fwtoolkit"
+import {gettext} from "fwtoolkit"
 
 import type {Book, CSL, DocumentListEntry, User} from "../../types.js"
 import {getMissingChapterData} from "../tools.js"
@@ -36,6 +37,7 @@ export class BITSBookExporter {
     textFiles: TextFile[]
     httpFiles: HttpFile[]
     zipFileName: string
+    progressCallback?: ProgressCallback
 
     constructor(
         schema: Schema,
@@ -57,20 +59,24 @@ export class BITSBookExporter {
         this.zipFileName = ""
     }
 
-    init(): Promise<Blob> | false {
+    init(progressCallback?: ProgressCallback): Promise<Blob> | false {
+        this.progressCallback = progressCallback
+        this.progressCallback?.(
+            gettext("BITS book export has been initiated."),
+            0
+        )
         if (this.book.chapters.length === 0) {
-            addAlert(
-                "error",
+            throw new Error(
                 gettext("Book cannot be exported due to lack of chapters.")
             )
-            return false
         }
-        return getMissingChapterData(this.book, this.docList, this.schema).then(
-            () => this.export()
-        )
+        return getMissingChapterData(this.book, this.docList, this.schema, {
+            progressCallback: this.progressCallback
+        }).then(() => this.export())
     }
 
     export(): Promise<Blob> {
+        this.progressCallback?.(gettext("Preparing BITS book..."), 10)
         this.book.chapters.sort((a, b) => (a.number > b.number ? 1 : -1))
 
         const imageDict: Record<string, {image: string; title?: string}> = {}
@@ -105,6 +111,7 @@ export class BITSBookExporter {
         chapters: Array<{front: string; body: string; back: string}>,
         imageDict: Record<string, {image: string; title?: string}>
     ): Promise<Blob> {
+        this.progressCallback?.(gettext("Assembling BITS book..."), 80)
         const images = Object.values(imageDict).map(image => ({
             filename: image.image.split("/").pop()?.split("?")[0] || "",
             url: image.image.split("?")[0],
@@ -143,6 +150,7 @@ export class BITSBookExporter {
     }
 
     createZip(): Promise<Blob> {
+        this.progressCallback?.(gettext("Finalizing BITS book..."), 90)
         const zipper = new ZipFileCreator(
             this.textFiles,
             this.httpFiles,
@@ -150,7 +158,10 @@ export class BITSBookExporter {
             undefined,
             this.updated
         )
-        return zipper.init().then(blob => this.download(blob))
+        return zipper.init().then(blob => {
+            this.progressCallback?.(gettext("BITS book export complete."), 100)
+            return this.download(blob)
+        })
     }
 
     download(blob: Blob): Blob {

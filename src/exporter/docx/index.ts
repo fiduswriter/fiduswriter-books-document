@@ -4,13 +4,14 @@
 
 import type {Schema} from "prosemirror-model"
 import type {CSL, User} from "@fiduswriter/document"
+import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {
     fixTables,
     removeHidden
 } from "@fiduswriter/document/exporter/tools/doc_content"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
 import {XmlZip} from "@fiduswriter/document/exporter/tools/xml_zip"
-import {addAlert} from "fwtoolkit"
+import {gettext} from "fwtoolkit"
 
 import {DOCXExporterCitations} from "@fiduswriter/document/exporter/docx/citations"
 import {DOCXExporterComments} from "@fiduswriter/document/exporter/docx/comments"
@@ -39,6 +40,7 @@ export class DOCXBookExporter {
     textFiles: Array<Record<string, unknown>>
     httpFiles: Array<Record<string, unknown>>
     mimeType: string
+    progressCallback?: ProgressCallback
 
     constructor(
         schema: Schema,
@@ -62,23 +64,27 @@ export class DOCXBookExporter {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     }
 
-    init(): Promise<Blob> | false {
+    init(progressCallback?: ProgressCallback): Promise<Blob> | false {
+        this.progressCallback = progressCallback
+        this.progressCallback?.(
+            gettext("DOCX book export has been initiated."),
+            0
+        )
         if (this.book.chapters.length === 0) {
-            addAlert(
-                "error",
+            throw new Error(
                 gettext("Book cannot be exported due to lack of chapters.")
             )
-            return false
         }
         return getMissingChapterData(
             this.book,
             this.docList,
             this.schema,
-            {rawContent: true}
+            {rawContent: true, progressCallback: this.progressCallback}
         ).then(() => this.export())
     }
 
     export(): Promise<Blob> {
+        this.progressCallback?.(gettext("Preparing DOCX book..."), 10)
         this.book.chapters.sort((a, b) => (a.number > b.number ? 1 : -1))
         const xml = new XmlZip(this.templateUrl, this.mimeType)
 
@@ -99,8 +105,17 @@ export class DOCXBookExporter {
             .then(() => render.init())
             .then(() => rels.init())
             .then(() => this.exportChapters(xml as any, render, rels, math, tables))
-            .then(() => xml.prepareBlob())
-            .then(blob => this.download(blob))
+            .then(() => {
+                this.progressCallback?.(gettext("Finalizing DOCX book..."), 90)
+                return xml.prepareBlob()
+            })
+            .then(blob => {
+                this.progressCallback?.(
+                    gettext("DOCX book export complete."),
+                    100
+                )
+                return this.download(blob)
+            })
     }
 
     exportChapters(

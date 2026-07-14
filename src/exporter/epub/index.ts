@@ -8,7 +8,7 @@ import {htmlExportTemplate} from "@fiduswriter/document/exporter/html/templates"
 import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {removeHidden} from "@fiduswriter/document/exporter/tools/doc_content"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
-import {ZipFileCreator} from "@fiduswriter/document/exporter/tools/zip"
+import {ZipFileCreator} from "fwtoolkit/file/zip"
 import {gettext, get, staticUrl} from "fwtoolkit"
 import pretty from "pretty"
 

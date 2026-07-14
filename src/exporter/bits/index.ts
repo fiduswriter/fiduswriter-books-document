@@ -8,7 +8,7 @@ import {JATSExporterConverter} from "@fiduswriter/document/exporter/jats/convert
 import {darManifest} from "@fiduswriter/document/exporter/jats/templates"
 import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
-import {ZipFileCreator} from "@fiduswriter/document/exporter/tools/zip"
+import {ZipFileCreator} from "fwtoolkit/file/zip"
 import {gettext} from "fwtoolkit"
 
 import type {Book, CSL, DocumentListEntry, User} from "../../types.js"

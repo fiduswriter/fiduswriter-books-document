@@ -5,11 +5,11 @@
 import type {Schema} from "prosemirror-model"
 import type {User} from "@fiduswriter/document"
 import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
-import {BibLatexExporter} from "biblatex-csl-converter"
+import {BibLatexExporter} from "bibliojson"
 import {LatexExporterConvert} from "@fiduswriter/document/exporter/latex/convert"
 import {removeHidden} from "@fiduswriter/document/exporter/tools/doc_content"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
-import {ZipFileCreator} from "@fiduswriter/document/exporter/tools/zip"
+import {ZipFileCreator} from "fwtoolkit/file/zip"
 import {gettext} from "fwtoolkit"
 
 import type {Book, DocumentListEntry} from "../../types.js"

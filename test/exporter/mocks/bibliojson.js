@@ -1,4 +1,4 @@
-// Minimal mock for biblatex-csl-converter.
+// Minimal mock for bibliojson.
 //
 // The document/book exporters import several named exports from this package
 // at module load time. Because the test documents contain no citations, none

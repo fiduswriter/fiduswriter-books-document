@@ -25,8 +25,7 @@ export default {
         "^@vivliostyle/print$": "<rootDir>/test/exporter/mocks/vivliostyle.js",
         "^mathlive$": "<rootDir>/test/exporter/mocks/mathlive.js",
         "^mathml2omml$": "<rootDir>/test/exporter/mocks/mathml2omml.js",
-        "^biblatex-csl-converter$":
-            "<rootDir>/test/exporter/mocks/biblatex-csl-converter.js",
+        "^bibliojson$": "<rootDir>/test/exporter/mocks/bibliojson.js",
         "^@fiduswriter/document/mathlive/opf_includes$":
             "<rootDir>/test/exporter/mocks/empty-module.js"
     },

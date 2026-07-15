@@ -32,7 +32,7 @@ export class BITSBookExporter {
     book: Book
     user: User
     docList: DocumentListEntry[]
-    updated: any
+    updated: number
     type: string
     textFiles: TextFile[]
     httpFiles: HttpFile[]
@@ -45,7 +45,7 @@ export class BITSBookExporter {
         book: Book,
         user: User,
         docList: DocumentListEntry[],
-        updated: any
+        updated: number
     ) {
         this.schema = schema
         this.csl = csl
@@ -156,7 +156,7 @@ export class BITSBookExporter {
             this.httpFiles,
             undefined,
             undefined,
-            this.updated
+            new Date(this.updated * 1000)
         )
         return zipper.init().then(blob => {
             this.progressCallback?.(gettext("BITS book export complete."), 100)

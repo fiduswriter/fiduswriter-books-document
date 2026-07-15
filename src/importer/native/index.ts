@@ -167,7 +167,7 @@ export class NativeBookImporter {
 
         const bookData = JSON.parse(
             textFiles.find(f => f.filename === "book.json")?.content || "{}"
-        ) as Record<string, any>
+        ) as Record<string, unknown>
 
         const sortedChapters = [...(bookData.chapters as Array<{chapter_index: number; number: number; part?: string}>)].sort(
             (a, b) => a.chapter_index - b.chapter_index
@@ -197,9 +197,9 @@ export class NativeBookImporter {
                 throw new Error(`Missing chapter data for index ${ci}`)
             }
 
-            const docJson = JSON.parse(docFile.content) as Record<string, any>
-            const imagesJson = JSON.parse(imagesFile.content) as Record<string, any>
-            const bibJson = JSON.parse(bibFile.content) as Record<string, any>
+            const docJson = JSON.parse(docFile.content) as Record<string, unknown>
+            const imagesJson = JSON.parse(imagesFile.content) as Record<string, unknown>
+            const bibJson = JSON.parse(bibFile.content) as Record<string, unknown>
 
             const chapterPrefix = `chapters/${ci}/images/`
             const chapterOtherFiles = binaryFiles
@@ -220,7 +220,7 @@ export class NativeBookImporter {
             const importer = new NativeImporter(
                 docJson,
                 bibJson,
-                {db: imagesJson},
+                {db: imagesJson as unknown as import("@fiduswriter/document").ImageDB["db"]},
                 chapterOtherFiles,
                 this.user,
                 this.nativeBackend,
@@ -256,7 +256,7 @@ export class NativeBookImporter {
             part: chapter.part || ""
         }))
 
-        const book = await this.bookBackend.createBook(bookData as any, chapters, false)
+        const book = await this.bookBackend.createBook(bookData, chapters, false)
         this.bookId = book.id || null
         this.ok = true
         this.statusText = `"${bookData.title}" ${gettext("successfully imported.")}`

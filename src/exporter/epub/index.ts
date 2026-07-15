@@ -12,7 +12,8 @@ import {ZipFileCreator} from "fwtoolkit/file/zip"
 import {gettext, get, staticUrl} from "fwtoolkit"
 import pretty from "pretty"
 
-import type {Book, BookStyles, CSL, DocumentListEntry, User} from "../../types.js"
+import type {Book, BookCoverImage, BookStyles, CSL, DocumentListEntry, User} from "../../types.js"
+import type {FidusNode} from "@fiduswriter/document"
 import {getMissingChapterData} from "../tools.js"
 import {
     containerTemplate,
@@ -179,7 +180,7 @@ export class EpubBookExporter {
                     contents: pretty(
                         epubBookCoverTemplate({
                             book: this.book,
-                            coverImage: coverImage as any,
+                            coverImage: coverImage as BookCoverImage & {image: string},
                             shortLang: this.book.settings.language.split("-")[0]
                         })
                     )
@@ -209,7 +210,7 @@ export class EpubBookExporter {
                             return false
                         }
 
-                        const docContent = removeHidden(doc.content as any) as any
+                        const docContent = removeHidden(doc.content) as FidusNode
 
                         const converter = new HTMLExporterConvert(
                             doc.title,
@@ -326,19 +327,19 @@ export class EpubBookExporter {
                             10
                         ),
                         modified: getTimestamp(new Date(this.updated * 1000)),
-                        styleSheets: this.styleSheets as any,
+                        styleSheets: this.styleSheets as Array<{filename: string}>,
                         math: this.math,
                         images: this.images.map(image => ({
                             ...image,
-                            mimeType: getImageMimeType(image.filename)
-                        })) as any,
+                            mimeType: getImageMimeType(image.filename) || undefined
+                        })),
                         fontFiles: this.fontFiles.map(font => ({
                             ...font,
-                            mimeType: getFontMimeType(font.filename)
-                        })) as any,
-                        chapters: this.chapters as any,
-                        user: this.user as any
-                    } as any)
+                            mimeType: getFontMimeType(font.filename) || undefined
+                        })),
+                        chapters: this.chapters,
+                        user: {name: this.user.name || ""}
+                    })
                 )
             },
             {
@@ -349,8 +350,12 @@ export class EpubBookExporter {
                         title: this.book.title,
                         idType: "fidus",
                         id: this.book.id,
-                        toc: toc as any
-                    } as any)
+                        toc: toc as Array<{
+                            link: string
+                            title: string
+                            children?: Array<{link: string; title: string}>
+                        }>
+                    })
                 )
             },
             {
@@ -358,9 +363,13 @@ export class EpubBookExporter {
                 contents: pretty(
                     navTemplate({
                         shortLang: this.book.settings.language.split("-")[0],
-                        toc: toc as any,
-                        styleSheets: this.styleSheets as any
-                    } as any)
+                        toc: toc as Array<{
+                            link: string
+                            title: string
+                            children?: Array<{link: string; title: string}>
+                        }>,
+                        styleSheets: this.styleSheets as Array<{filename: string}>
+                    })
                 )
             }
         ])

@@ -1,9 +1,10 @@
 import {describe, expect, it, jest} from "@jest/globals"
 
 import {getMissingChapterData} from "../../src/exporter/tools.js"
+import type {Book, Chapter, DocumentListEntry} from "../../src/types.js"
 import {schema} from "./support.js"
 
-function bookWithChapters(chapters: any[]): any {
+function bookWithChapters(chapters: Chapter[]): Book {
     return {
         title: "Injection Book",
         metadata: {},
@@ -18,7 +19,7 @@ describe("getMissingChapterData dependency injection", () => {
             {text: 1, number: 1},
             {text: 2, number: 2}
         ])
-        const documentList: any[] = [
+        const documentList: DocumentListEntry[] = [
             {id: 1, title: "One", content: {type: "doc", content: []}},
             {id: 2, title: "Two", content: {type: "doc", content: []}}
         ]
@@ -66,7 +67,7 @@ describe("getMissingChapterData dependency injection", () => {
         }
 
         const book = bookWithChapters([{text: 1, number: 1}])
-        const doc: any = {
+        const doc: DocumentListEntry = {
             id: 1,
             title: "Encrypted Chapter",
             content: encryptedPayload,
@@ -75,7 +76,7 @@ describe("getMissingChapterData dependency injection", () => {
             e2ee_iterations: 1000,
             images: {}
         }
-        const documentList: any[] = [doc]
+        const documentList: DocumentListEntry[] = [doc]
 
         const fakeKey = {name: "fake-key"} as unknown as CryptoKey
         const ensurePassphraseUnlocked = jest.fn(async () => true)

@@ -54,7 +54,9 @@ export class PrintBookExporter extends HTMLBookExporter {
         if (!htmlDoc) {
             return
         }
-        const config: any = {title: this.book.title}
+        const config: {title: string; printCallback?: (iframeWin: Window) => void} = {
+            title: this.book.title
+        }
 
         if (navigator.userAgent.includes("Gecko/")) {
             config.printCallback = (iframeWin: Window) => {

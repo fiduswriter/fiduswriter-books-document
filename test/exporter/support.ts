@@ -9,33 +9,36 @@
 import {readFileSync} from "node:fs"
 import {dirname, join} from "node:path"
 import {fileURLToPath} from "node:url"
+import type {Schema} from "prosemirror-model"
+import type {CSL, FidusNode, User} from "@fiduswriter/document"
+import type {Book, DocumentListEntry} from "../../src/types.js"
 import {docSchema} from "@fiduswriter/document/schema/document/index"
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const fixturesDir = join(currentDir, "..", "fixtures")
 
-export const schema: any = docSchema
+export const schema: Schema = docSchema
 
-export const sampleDocContent: any = JSON.parse(
+export const sampleDocContent: FidusNode = JSON.parse(
     readFileSync(join(fixturesDir, "sample-doc.json"), "utf-8")
 )
 
-const sampleBook: any = JSON.parse(
+const sampleBook: Book = JSON.parse(
     readFileSync(join(fixturesDir, "sample-book.json"), "utf-8")
 )
 
-export const sampleSettings: any = {
+export const sampleSettings: Record<string, unknown> = {
     language: "en-US",
     citationstyle: "apa",
     bibliography_header: {},
     copyright: {holder: false, year: false, freeToRead: true, licenses: []}
 }
 
-export const fakeCSL: any = {}
+export const fakeCSL: CSL = {}
 
-export const user: any = {id: 1, name: "Test User", username: "test"}
+export const user: User = {id: 1, name: "Test User", username: "test"}
 
-function makeChapterDoc(id: number, title: string): any {
+function makeChapterDoc(id: number, title: string): DocumentListEntry {
     const raw = JSON.parse(JSON.stringify(sampleDocContent))
     // Give each chapter a distinct title so combined output can be checked.
     raw.content[0].content = [{type: "text", text: title}]
@@ -57,11 +60,11 @@ function makeChapterDoc(id: number, title: string): any {
 }
 
 /** A fresh, deep-cloned copy of the sample book. */
-export function makeBook(): any {
+export function makeBook(): Book {
     return JSON.parse(JSON.stringify(sampleBook))
 }
 
 /** Two chapter documents (ids 1 and 2) with distinct titles. */
-export function makeDocumentList(): any[] {
+export function makeDocumentList(): DocumentListEntry[] {
     return [makeChapterDoc(1, "Chapter One"), makeChapterDoc(2, "Chapter Two")]
 }

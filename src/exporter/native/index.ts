@@ -12,6 +12,7 @@ import {FIDUSBOOK_VERSION} from "../../schema/index.js"
 import type {Book, DocumentListEntry, User} from "../../types.js"
 import {getMissingChapterData} from "../tools.js"
 import type {ProgressCallback} from "@fiduswriter/document/exporter/native/shrink"
+import type {FidusNode} from "@fiduswriter/document"
 
 interface FileInclude {
     url: string
@@ -30,7 +31,7 @@ export class NativeBookExporter {
     book: Book
     user: User
     documentList: DocumentListEntry[]
-    updated: any
+    updated: number
 
     progressCallback?: ProgressCallback
 
@@ -39,7 +40,7 @@ export class NativeBookExporter {
         book: Book,
         user: User,
         documentList: DocumentListEntry[],
-        updated: any,
+        updated: number,
         progressCallback?: ProgressCallback
     ) {
         this.schema = schema
@@ -134,7 +135,7 @@ export class NativeBookExporter {
             )
 
             const shrinker = new ShrinkFidus(
-                doc as any,
+                doc as unknown as {content: FidusNode; [key: string]: unknown},
                 {db: doc.images || {}},
                 {db: doc.bibliography || {}},
                 this.progressCallback
@@ -189,7 +190,7 @@ export class NativeBookExporter {
                 httpFiles,
                 [],
                 "application/fidusbook+zip",
-                this.updated
+                new Date(this.updated * 1000)
             )
             return zipper.init().then(blob => this.download(blob))
         })

@@ -7,11 +7,12 @@
  * decrypt end-to-end encrypted chapters.
  */
 
-import type {Schema} from "prosemirror-model"
+import type {Node, Schema} from "prosemirror-model"
 import {getSettings} from "@fiduswriter/document/schema/convert"
 import {acceptAllNoInsertions} from "@fiduswriter/document/transform"
 import {gettext} from "fwtoolkit"
 import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
+import type {FidusDoc} from "@fiduswriter/document"
 
 import type {
     ChapterLoader,
@@ -172,13 +173,13 @@ async function decryptE2EEChapters(
                 // Parse ProseMirror content.
                 if (rawContent) {
                     doc.rawContent = JSON.parse(
-                        JSON.stringify(schema.nodeFromJSON(decryptedContent as Record<string, unknown>).toJSON())
+                        JSON.stringify(schema.nodeFromJSON(decryptedContent as unknown as Record<string, unknown>).toJSON())
                     )
                 }
                 doc.content = acceptAllNoInsertions(
-                    schema.nodeFromJSON(decryptedContent as Record<string, unknown>)
+                    schema.nodeFromJSON(decryptedContent as unknown as Record<string, unknown>) as Node
                 ).toJSON()
-                doc.settings = getSettings(doc.content)
+                doc.settings = getSettings(doc.content as unknown as FidusDoc)
 
                 // Decrypt encrypted images.
                 const encryptedImageEntries = Object.entries(doc.images || {}).filter(

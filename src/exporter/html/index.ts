@@ -61,7 +61,7 @@ export class HTMLBookExporter {
     book: Book
     user: User
     docList: DocumentListEntry[]
-    updated: any
+    updated: number
     multiDoc: boolean
     relativeUrls: boolean
     chapters: ChapterInfo[]
@@ -70,10 +70,10 @@ export class HTMLBookExporter {
     httpFiles: HttpFile[]
     math: boolean
     bibCSS: string
-    chapterTemplate: (...args: any[]) => string
-    indexTemplate: (...args: any[]) => string
-    singleFileHTMLBookTemplate: (...args: any[]) => string
-    singleFileHTMLBookCSSTemplate: (...args: any[]) => string
+    chapterTemplate: (args: Record<string, unknown>) => string
+    indexTemplate: (args: Record<string, unknown>) => string
+    singleFileHTMLBookTemplate: (args: Record<string, unknown>) => string
+    singleFileHTMLBookCSSTemplate: (args: Record<string, unknown>) => string
     styleSheets: StyleSheet[]
     progressCallback?: ProgressCallback
 
@@ -84,7 +84,7 @@ export class HTMLBookExporter {
         book: Book,
         user: User,
         docList: DocumentListEntry[],
-        updated: any,
+        updated: number,
         multiDoc = true,
         {relativeUrls = true} = {}
     ) {
@@ -103,12 +103,12 @@ export class HTMLBookExporter {
         this.httpFiles = []
         this.math = false
         this.bibCSS = ""
-        this.chapterTemplate = multiDoc
+        this.chapterTemplate = (multiDoc
             ? htmlBookExportTemplate
-            : (singleFileHTMLBookChapterTemplate as any)
-        this.indexTemplate = multiDoc
+            : singleFileHTMLBookChapterTemplate) as unknown as (args: Record<string, unknown>) => string
+        this.indexTemplate = (multiDoc
             ? htmlBookIndexTemplate
-            : htmlBookIndexBodyTemplate
+            : htmlBookIndexBodyTemplate) as unknown as (args: Record<string, unknown>) => string
         this.singleFileHTMLBookTemplate = singleFileHTMLBookTemplate
         this.singleFileHTMLBookCSSTemplate = singleFileHTMLBookCSSTemplate
         this.styleSheets = [{url: staticUrl("css/book.css")}]
@@ -197,19 +197,31 @@ export class HTMLBookExporter {
             }
 
             const documentHTMLExporter = new HTMLExporter(
-                doc as any,
-                bibDB as any,
-                imageDB as any,
+                doc,
+                bibDB,
+                imageDB,
                 this.csl,
                 this.updated,
                 [],
                 options,
-                htmlBookChapterTemplate as any
+                htmlBookChapterTemplate as unknown as typeof HTMLExporter.prototype.htmlExportTemplate
             )
 
             await documentHTMLExporter.process()
             const {metaData, converter, textFiles, httpFiles} =
-                documentHTMLExporter.getProcessedFiles() as any
+                documentHTMLExporter.getProcessedFiles() as {
+                    metaData: Record<string, unknown>
+                    converter: {
+                        fnCounter: number
+                        affCounter: number
+                        categoryCounter: Record<string, number>
+                        features: {math: boolean}
+                        citations: {bibCSS: string}
+                        metaData: {toc: Array<Record<string, unknown>>}
+                    }
+                    textFiles: TextFile[]
+                    httpFiles: HttpFile[]
+                }
 
             const contents = textFiles.find(
                 (textFile: TextFile) => textFile.filename === "document.html"
@@ -431,7 +443,7 @@ export class HTMLBookExporter {
 
     async createZip(): Promise<Blob | void> {
         const zipper = new ZipFileCreator(
-            this.textFiles.concat(this.styleSheets as any),
+            this.textFiles.concat(this.styleSheets as TextFile[]),
             this.httpFiles,
             this.includeZips,
             "application/zip",

@@ -3,7 +3,7 @@
  */
 
 import type {Schema} from "prosemirror-model"
-import type {CSL, User} from "@fiduswriter/document"
+import type {CSL, ExportMetadata, FidusNode, User} from "@fiduswriter/document"
 import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {
     fixTables,
@@ -33,7 +33,7 @@ export class ODTBookExporter {
     user: User
     docList: DocumentListEntry[]
     templateUrl: string
-    updated: any
+    updated: number
     textFiles: Array<Record<string, unknown>>
     httpFiles: Array<Record<string, unknown>>
     mimeType: string
@@ -45,7 +45,7 @@ export class ODTBookExporter {
         book: Book,
         user: User,
         docList: DocumentListEntry[],
-        updated: any
+        updated: number
     ) {
         this.schema = schema
         this.csl = csl
@@ -83,14 +83,15 @@ export class ODTBookExporter {
         this.progressCallback?.(gettext("Preparing ODT book..."), 10)
         this.book.chapters.sort((a, b) => (a.number > b.number ? 1 : -1))
         const xml = new XmlZip(this.templateUrl, this.mimeType)
-        const styles = new ODTExporterStyles(xml as any)
-        const math = new ODTExporterMath(xml as any)
-        const tracks = new ODTExporterTracks(xml as any)
-        const render = new ODTBookExporterRender(xml as any, styles)
+        const styles = new ODTExporterStyles(xml)
+        const math = new ODTExporterMath(xml)
+        const tracks = new ODTExporterTracks(xml)
+        const render = new ODTBookExporterRender(xml, styles)
         const metadata = new ODTExporterMetadata(
-            xml as any,
+            xml,
             styles,
-            this.getBaseMetadata() as any
+            this.getBaseMetadata(),
+            this.csl
         )
 
         return xml
@@ -100,7 +101,7 @@ export class ODTBookExporter {
             .then(() => render.init())
             .then(() => metadata.init())
             .then(() => math.init())
-            .then(() => this.exportChapters(xml as any, render, styles, math, tracks))
+            .then(() => this.exportChapters(xml, render, styles, math, tracks))
             .then(() => {
                 this.progressCallback?.(gettext("Finalizing ODT book..."), 90)
                 return xml.prepareBlob()
@@ -115,11 +116,11 @@ export class ODTBookExporter {
     }
 
     exportChapters(
-        xml: any,
+        xml: XmlZip,
         render: ODTBookExporterRender,
-        styles: any,
-        math: any,
-        tracks: any
+        styles: ODTExporterStyles,
+        math: ODTExporterMath,
+        tracks: ODTExporterTracks
     ): Promise<void> {
         return this.book.chapters
             .map((chapter, chapterIndex) => {
@@ -129,10 +130,12 @@ export class ODTBookExporter {
                         return Promise.resolve()
                     }
                     const docContent = fixTables(
-                        removeHidden(doc.rawContent as any) as any
-                    ) as any
+                        removeHidden(
+                            doc.rawContent as unknown as FidusNode
+                        ) as FidusNode
+                    )
                     const citations = new ODTExporterCitations(
-                        docContent as any,
+                        docContent,
                         doc.settings,
                         styles,
                         {db: doc.bibliography || {}},
@@ -169,7 +172,7 @@ export class ODTBookExporter {
                         .then(() => {
                             const pmBib = footnotes.pmBib || citations.pmBib
                             render.render(
-                                docContent as any,
+                                docContent,
                                 pmBib,
                                 doc.settings,
                                 richtext,
@@ -199,7 +202,7 @@ export class ODTBookExporter {
             .then(() => render.assemble())
     }
 
-    getBaseMetadata(): Record<string, unknown> {
+    getBaseMetadata(): ExportMetadata {
         const authors = this.book.metadata.author?.length
             ? [{institution: this.book.metadata.author}]
             : []
@@ -210,6 +213,7 @@ export class ODTBookExporter {
             : []
         return {
             authors,
+            contributors: [],
             keywords,
             title: this.book.title,
             language: this.book.settings.language

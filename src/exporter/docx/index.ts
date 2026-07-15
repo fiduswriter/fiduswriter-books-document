@@ -3,7 +3,7 @@
  */
 
 import type {Schema} from "prosemirror-model"
-import type {CSL, User} from "@fiduswriter/document"
+import type {CSL, ExportMetadata, FidusNode, User} from "@fiduswriter/document"
 import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {
     fixTables,
@@ -36,7 +36,7 @@ export class DOCXBookExporter {
     user: User
     docList: DocumentListEntry[]
     templateUrl: string
-    updated: any
+    updated: number
     textFiles: Array<Record<string, unknown>>
     httpFiles: Array<Record<string, unknown>>
     mimeType: string
@@ -48,7 +48,7 @@ export class DOCXBookExporter {
         book: Book,
         user: User,
         docList: DocumentListEntry[],
-        updated: any
+        updated: number
     ) {
         this.schema = schema
         this.csl = csl
@@ -88,13 +88,14 @@ export class DOCXBookExporter {
         this.book.chapters.sort((a, b) => (a.number > b.number ? 1 : -1))
         const xml = new XmlZip(this.templateUrl, this.mimeType)
 
-        const tables = new DOCXExporterTables(xml as any)
-        const math = new DOCXExporterMath(xml as any)
-        const render = new DOCXBookExporterRender(xml as any)
-        const rels = new DOCXExporterRels(xml as any, "document")
+        const tables = new DOCXExporterTables(xml)
+        const math = new DOCXExporterMath(xml)
+        const render = new DOCXBookExporterRender(xml)
+        const rels = new DOCXExporterRels(xml, "document")
         const metadata = new DOCXExporterMetadata(
-            xml as any,
-            this.getBaseMetadata() as any
+            xml,
+            this.getBaseMetadata(),
+            this.csl
         )
 
         return xml
@@ -104,7 +105,7 @@ export class DOCXBookExporter {
             .then(() => math.init())
             .then(() => render.init())
             .then(() => rels.init())
-            .then(() => this.exportChapters(xml as any, render, rels, math, tables))
+            .then(() => this.exportChapters(xml, render, rels, math, tables))
             .then(() => {
                 this.progressCallback?.(gettext("Finalizing DOCX book..."), 90)
                 return xml.prepareBlob()
@@ -119,11 +120,11 @@ export class DOCXBookExporter {
     }
 
     exportChapters(
-        xml: any,
+        xml: XmlZip,
         render: DOCXBookExporterRender,
-        rels: any,
-        math: any,
-        tables: any
+        rels: DOCXExporterRels,
+        math: DOCXExporterMath,
+        tables: DOCXExporterTables
     ): Promise<void> {
         return this.book.chapters
             .map((chapter, chapterIndex) => {
@@ -134,12 +135,14 @@ export class DOCXBookExporter {
                     }
                     const docContent = moveFootnoteComments(
                         fixTables(
-                            removeHidden(doc.rawContent as any) as any
-                        ) as any
-                    ) as any
+                            removeHidden(
+                                doc.rawContent as unknown as FidusNode
+                            ) as FidusNode
+                        )
+                    )
 
                     const images = new DOCXExporterImages(
-                        docContent as any,
+                        docContent,
                         {db: doc.images || {}},
                         xml,
                         rels
@@ -154,7 +157,7 @@ export class DOCXBookExporter {
                     )
 
                     const footnotes = new DOCXExporterFootnotes(
-                        doc as any,
+                        doc,
                         docContent,
                         doc.settings,
                         {db: doc.images || {}},
@@ -169,7 +172,7 @@ export class DOCXBookExporter {
                     )
 
                     const richtext = new DOCXExporterRichtext(
-                        doc as any,
+                        doc,
                         doc.settings,
                         lists,
                         footnotes,
@@ -197,7 +200,7 @@ export class DOCXBookExporter {
                         .then(() => {
                             const pmBib = footnotes.pmBib || citations.pmBib
                             render.render(
-                                docContent as any,
+                                docContent,
                                 pmBib,
                                 doc.settings,
                                 richtext,
@@ -227,7 +230,7 @@ export class DOCXBookExporter {
             .then(() => render.assemble())
     }
 
-    getBaseMetadata(): Record<string, unknown> {
+    getBaseMetadata(): ExportMetadata {
         const authors = this.book.metadata.author?.length
             ? [{institution: this.book.metadata.author}]
             : []
@@ -238,6 +241,7 @@ export class DOCXBookExporter {
             : []
         return {
             authors,
+            contributors: [],
             keywords,
             title: this.book.title,
             language: this.book.settings.language

@@ -13,6 +13,7 @@ import {ZipFileCreator} from "fwtoolkit/file/zip"
 import {gettext} from "fwtoolkit"
 
 import type {Book, DocumentListEntry} from "../../types.js"
+import type {BibDB, ImageDB} from "@fiduswriter/document"
 import {getMissingChapterData} from "../tools.js"
 import {bookTexTemplate} from "./templates.js"
 
@@ -31,7 +32,7 @@ export class LatexBookExporter {
     book: Book
     user: User
     docList: DocumentListEntry[]
-    updated: any
+    updated: number
     textFiles: TextFile[]
     httpFiles: HttpFile[]
     zipFileName: string
@@ -42,7 +43,7 @@ export class LatexBookExporter {
         book: Book,
         user: User,
         docList: DocumentListEntry[],
-        updated: any
+        updated: number
     ) {
         this.schema = schema
         this.book = book
@@ -81,12 +82,12 @@ export class LatexBookExporter {
                 return
             }
             const converter = new LatexExporterConvert(
-                this as any,
+                this,
                 {db: doc.images || {}},
                 {db: doc.bibliography || {}},
                 doc.settings
             )
-            const chapterContent = removeHidden(doc.content as any)
+            const chapterContent = removeHidden(doc.content)
             const convertedDoc = converter.init(chapterContent)
             this.textFiles.push({
                 filename: `chapter-${index + 1}.tex`,
@@ -96,7 +97,7 @@ export class LatexBookExporter {
                 ...new Set(bibIds.concat(Object.keys(convertedDoc.usedBibDB)))
             ]
             imageIds = [...new Set(imageIds.concat(convertedDoc.imageIds))]
-            Object.assign(features, converter.features as Record<string, boolean>)
+            Object.assign(features, converter.features)
             Object.keys(convertedDoc.usedBibDB).forEach(
                 bibId =>
                     (combinedBibliography[bibId] = doc.bibliography?.[bibId])
@@ -110,12 +111,12 @@ export class LatexBookExporter {
         })
         if (bibIds.length > 0) {
             const bibExport = new BibLatexExporter(
-                combinedBibliography as any,
+                combinedBibliography as unknown as ConstructorParameters<typeof BibLatexExporter>[0],
                 bibIds
             )
             this.textFiles.push({
                 filename: "bibliography.bib",
-                contents: (bibExport as any).output
+                contents: (bibExport as unknown as {output: string}).output
             })
         }
         imageIds.forEach(id => {
@@ -128,9 +129,9 @@ export class LatexBookExporter {
             }
         })
         const bookConverter = new LatexExporterConvert(
-            this as any,
-            {db: combinedImages as any},
-            {db: combinedBibliography as any},
+            this,
+            {db: combinedImages as unknown as ImageDB["db"]},
+            {db: combinedBibliography as unknown as BibDB["db"]},
             {language: this.book.settings.language, bibliography_header: {}}
         )
         bookConverter.features = features
@@ -155,7 +156,7 @@ export class LatexBookExporter {
             this.httpFiles,
             undefined,
             undefined,
-            this.updated
+            new Date(this.updated * 1000)
         )
 
         return zipper.init().then(blob => {

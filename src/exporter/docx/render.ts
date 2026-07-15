@@ -1,13 +1,18 @@
+import {XMLElement} from "@fiduswriter/document/exporter/tools/xml"
+import type {XmlZip} from "@fiduswriter/document/exporter/tools/xml_zip"
+import {DOCXExporterCitations} from "@fiduswriter/document/exporter/docx/citations"
 import {DOCXExporterRender} from "@fiduswriter/document/exporter/docx/render"
+import {DOCXExporterRichtext} from "@fiduswriter/document/exporter/docx/richtext"
+import type {DocSettings, FidusNode} from "@fiduswriter/document"
 
 export class DOCXBookExporterRender extends DOCXExporterRender {
-    preamble: any
-    bodyTemplate: any
-    postamble: any
-    fileXML: any
-    bodyParts: any[]
+    preamble: XMLElement | null
+    bodyTemplate: XMLElement | null
+    postamble: XMLElement | null
+    fileXML: XMLElement | null
+    bodyParts: XMLElement[]
 
-    constructor(xml: any) {
+    constructor(xml: XmlZip) {
         super(xml)
 
         this.preamble = null
@@ -19,14 +24,16 @@ export class DOCXBookExporterRender extends DOCXExporterRender {
 
     init(): Promise<void> {
         return super.init().then(() => {
-            this.fileXML = this.text
-            const text = this.fileXML.query("w:body")
+            this.fileXML = this.text as XMLElement
+            const text = this.fileXML.query("w:body") as XMLElement
             this.preamble = text.cloneNode(false)
             this.bodyTemplate = text.cloneNode(false)
             this.postamble = text.cloneNode(false)
-            let currentSection = this.bodyTemplate
-            const textChildren = Array.from(text.children)
-            textChildren.forEach((node: any) => {
+            let currentSection: XMLElement | null = this.bodyTemplate
+            const textChildren = Array.from(text.children).filter(
+                (node): node is XMLElement => node instanceof XMLElement
+            )
+            textChildren.forEach(node => {
                 const bookmarkStart = node.query("w:bookmarkStart")
                 if (bookmarkStart) {
                     const bookmarkName = String(
@@ -40,16 +47,23 @@ export class DOCXBookExporterRender extends DOCXExporterRender {
                         currentSection = this.postamble
                     }
                 }
-                currentSection.appendChild(node)
+                currentSection!.appendChild(node)
             })
             return Promise.resolve()
         })
     }
 
-    render(...args: any[]): void {
-        const [docContent, pmBib, settings, richtext, citations, chapterIndex] = args
-        this.text = this.bodyTemplate.cloneNode(true)
-        const bodyBookmark = (this.text as any).query("w:bookmarkStart", {
+    render(
+        docContent: FidusNode,
+        pmBib: unknown,
+        settings: DocSettings,
+        richtext: DOCXExporterRichtext,
+        citations: DOCXExporterCitations,
+        chapterIndex = 0
+    ): void {
+        this.text = this.bodyTemplate!.cloneNode(true)
+        const textEl = this.text as XMLElement
+        const bodyBookmark = textEl.query("w:bookmarkStart", {
             "w:name": "body"
         })
         if (bodyBookmark) {
@@ -89,11 +103,17 @@ export class DOCXBookExporterRender extends DOCXExporterRender {
             {title: "book.series_title", content: series_title},
             {title: "book.series_position", content: series_position}
         ]
-        const usedTags: any[] = []
-        const ambles = [this.preamble, this.postamble]
+        const usedTags: Array<{
+            title: string
+            content?: unknown
+            block: XMLElement
+        }> = []
+        const ambles = [this.preamble, this.postamble].filter(
+            (amble): amble is XMLElement => amble !== null
+        )
         ambles.forEach(amble => {
             const blocks = amble.queryAll(["w:p", "w:sectPr"])
-            blocks.forEach((block: any) => {
+            blocks.forEach(block => {
                 const text = block.textContent
                 tags.forEach(tag => {
                     const tagString = tag.title
@@ -107,13 +127,15 @@ export class DOCXBookExporterRender extends DOCXExporterRender {
     }
 
     assemble(): void {
-        const text = this.fileXML.query("w:body")
-        Array.from(this.preamble.children).forEach((node: any) =>
-            text.appendChild(node)
-        )
-        this.bodyParts.forEach((bodyPart: any, index: number) => {
-            const children = bodyPart.children.slice()
-            children.forEach((node: any) => {
+        const text = this.fileXML!.query("w:body") as XMLElement
+        Array.from(this.preamble!.children)
+            .filter((node): node is XMLElement => node instanceof XMLElement)
+            .forEach(node => text.appendChild(node))
+        this.bodyParts.forEach((bodyPart, index) => {
+            const children = bodyPart.children
+                .slice()
+                .filter((node): node is XMLElement => node instanceof XMLElement)
+            children.forEach(node => {
                 text.appendChild(node)
             })
             if (index < this.bodyParts.length - 1) {
@@ -135,8 +157,8 @@ export class DOCXBookExporterRender extends DOCXExporterRender {
                 )
             }
         })
-        Array.from(this.postamble.children).forEach((node: any) =>
-            text.appendChild(node)
-        )
+        Array.from(this.postamble!.children)
+            .filter((node): node is XMLElement => node instanceof XMLElement)
+            .forEach(node => text.appendChild(node))
     }
 }

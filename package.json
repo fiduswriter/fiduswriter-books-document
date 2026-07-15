@@ -107,5 +107,13 @@
         "prettier": "^3.8.5",
         "typescript-eslint": "^8.62.0",
         "prosemirror-model": "^1.25.0"
+    },
+    "lint-staged": {
+        "*.{ts,js,mjs,css,md,json,html}": [
+            "prettier --write"
+        ],
+        "*.{ts,js,mjs}": [
+            "eslint --fix"
+        ]
     }
 }

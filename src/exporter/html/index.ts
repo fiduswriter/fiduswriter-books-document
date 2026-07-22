@@ -4,6 +4,7 @@
 
 import type {Schema} from "prosemirror-model"
 import type {CSL, User} from "@fiduswriter/document"
+import type {HTMLExportMetadata} from "@fiduswriter/document/exporter/html/convert"
 import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {HTMLExporter} from "@fiduswriter/document/exporter/html/index"
 import {createSlug} from "@fiduswriter/document/exporter/tools/file"
@@ -33,7 +34,7 @@ interface StyleSheet {
 
 interface TextFile {
     filename: string
-    contents: string
+    contents?: string
 }
 
 interface HttpFile {
@@ -50,7 +51,7 @@ interface ChapterInfo {
     number: number
     part: string
     doc: DocumentListEntry
-    metaData: Record<string, unknown>
+    metaData: HTMLExportMetadata
     toc: Array<Record<string, unknown>>
 }
 
@@ -201,7 +202,7 @@ export class HTMLBookExporter {
                 bibDB,
                 imageDB,
                 this.csl,
-                this.updated,
+                new Date(this.updated * 1000),
                 [],
                 options,
                 htmlBookChapterTemplate as unknown as typeof HTMLExporter.prototype.htmlExportTemplate
@@ -209,19 +210,7 @@ export class HTMLBookExporter {
 
             await documentHTMLExporter.process()
             const {metaData, converter, textFiles, httpFiles} =
-                documentHTMLExporter.getProcessedFiles() as {
-                    metaData: Record<string, unknown>
-                    converter: {
-                        fnCounter: number
-                        affCounter: number
-                        categoryCounter: Record<string, number>
-                        features: {math: boolean}
-                        citations: {bibCSS: string}
-                        metaData: {toc: Array<Record<string, unknown>>}
-                    }
-                    textFiles: TextFile[]
-                    httpFiles: HttpFile[]
-                }
+                documentHTMLExporter.getProcessedFiles()
 
             const contents = textFiles.find(
                 (textFile: TextFile) => textFile.filename === "document.html"
@@ -443,7 +432,10 @@ export class HTMLBookExporter {
 
     async createZip(): Promise<Blob | void> {
         const zipper = new ZipFileCreator(
-            this.textFiles.concat(this.styleSheets as TextFile[]),
+            this.textFiles.concat(this.styleSheets as TextFile[]) as Array<{
+                filename: string
+                contents: string
+            }>,
             this.httpFiles,
             this.includeZips,
             "application/zip",

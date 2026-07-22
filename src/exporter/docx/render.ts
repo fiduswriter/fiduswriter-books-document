@@ -5,6 +5,13 @@ import {DOCXExporterRender} from "@fiduswriter/document/exporter/docx/render"
 import {DOCXExporterRichtext} from "@fiduswriter/document/exporter/docx/richtext"
 import type {DocSettings, FidusNode} from "@fiduswriter/document"
 
+interface TagData {
+    title: string
+    content?: string | unknown[]
+    block: XMLElement
+    dimensions?: {width: number; height: number}
+}
+
 export class DOCXBookExporterRender extends DOCXExporterRender {
     preamble: XMLElement | null
     bodyTemplate: XMLElement | null
@@ -69,7 +76,13 @@ export class DOCXBookExporterRender extends DOCXExporterRender {
         if (bodyBookmark) {
             bodyBookmark.setAttribute("w:name", `chapter ${chapterIndex + 1}`)
         }
-        super.render(docContent, pmBib, settings, richtext, citations)
+        super.render(
+            docContent,
+            pmBib as false | FidusNode,
+            settings,
+            richtext,
+            citations
+        )
         this.bodyParts.push(this.text)
     }
 
@@ -105,7 +118,7 @@ export class DOCXBookExporterRender extends DOCXExporterRender {
         ]
         const usedTags: Array<{
             title: string
-            content?: unknown
+            content?: string | unknown[]
             block: XMLElement
         }> = []
         const ambles = [this.preamble, this.postamble].filter(
@@ -118,12 +131,12 @@ export class DOCXBookExporterRender extends DOCXExporterRender {
                 tags.forEach(tag => {
                     const tagString = tag.title
                     if (text.includes(`{${tagString}}`)) {
-                        usedTags.push(Object.assign({block}, tag))
+                        usedTags.push(Object.assign({block}, tag) as TagData)
                     }
                 })
             })
         })
-        usedTags.forEach(tag => this.inlineRender(tag))
+        usedTags.forEach(tag => this.inlineRender(tag as unknown as TagData))
     }
 
     assemble(): void {

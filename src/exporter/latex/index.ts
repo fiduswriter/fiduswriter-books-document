@@ -13,7 +13,7 @@ import {ZipFileCreator} from "fwtoolkit/file/zip"
 import {gettext} from "fwtoolkit"
 
 import type {Book, DocumentListEntry} from "../../types.js"
-import type {BibDB, ImageDB} from "@fiduswriter/document"
+import type {BibDB, ExportDoc, FidusNode, ImageDB} from "@fiduswriter/document"
 import {getMissingChapterData} from "../tools.js"
 import {bookTexTemplate} from "./templates.js"
 
@@ -29,6 +29,7 @@ interface HttpFile {
 
 export class LatexBookExporter {
     schema: Schema
+    doc!: ExportDoc
     book: Book
     user: User
     docList: DocumentListEntry[]
@@ -81,13 +82,14 @@ export class LatexBookExporter {
             if (!doc) {
                 return
             }
+            this.doc = doc
             const converter = new LatexExporterConvert(
                 this,
                 {db: doc.images || {}},
                 {db: doc.bibliography || {}},
                 doc.settings
             )
-            const chapterContent = removeHidden(doc.content)
+            const chapterContent = removeHidden(doc.content) as FidusNode
             const convertedDoc = converter.init(chapterContent)
             this.textFiles.push({
                 filename: `chapter-${index + 1}.tex`,
@@ -132,7 +134,10 @@ export class LatexBookExporter {
             this,
             {db: combinedImages as unknown as ImageDB["db"]},
             {db: combinedBibliography as unknown as BibDB["db"]},
-            {language: this.book.settings.language, bibliography_header: {}}
+            {
+                language: this.book.settings.language,
+                bibliography_header: {} as FidusNode
+            }
         )
         bookConverter.features = features
         const preamble = bookConverter.assemblePreamble()

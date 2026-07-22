@@ -4,6 +4,7 @@
 
 import type {Schema} from "prosemirror-model"
 import {HTMLExporterConvert} from "@fiduswriter/document/exporter/html/convert"
+import type {HTMLExportMetadata} from "@fiduswriter/document/exporter/html/convert"
 import {htmlExportTemplate} from "@fiduswriter/document/exporter/html/templates"
 import type {ProgressCallback} from "@fiduswriter/document/exporter/tools/progress"
 import {removeHidden} from "@fiduswriter/document/exporter/tools/doc_content"
@@ -65,7 +66,7 @@ interface ChapterOutput {
     part: string
     title: string
     docNum: number
-    metaData: Record<string, unknown>
+    metaData: HTMLExportMetadata
 }
 
 export class EpubBookExporter {
@@ -247,7 +248,7 @@ export class EpubBookExporter {
                         })
 
                         await Promise.all(
-                            extraStyleSheets.map(
+                            (extraStyleSheets as StyleSheet[]).map(
                                 async (sheet: StyleSheet) => this.loadStyle(sheet)
                             )
                         )

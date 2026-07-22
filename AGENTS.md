@@ -60,22 +60,26 @@ Do **not** put in this repository:
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Compile TypeScript to dist/
-npm run build
+pnpm run build
 
 # Run the Jest test suite
-npm test
+pnpm test
 
 # Run linting and formatting checks
-npm run lint
-npm run format:check
+pnpm run lint
+pnpm run format:check
 ```
+
+This repository uses pnpm for day-to-day development. Run `pnpm install` to
+install dependencies; `package-lock.json` is not tracked (pnpm maintains
+`pnpm-lock.yaml`).
 
 ## Pre-commit / pre-publish
 
-- `npm run prepare` runs `npm run build`.
+- `pnpm run prepare` runs `pnpm run build`.
 - `npm publish` triggers `prepublishOnly`, which also builds.
 - There is no pre-commit hook in this repository; rely on CI and run tests
   before committing.
@@ -92,7 +96,7 @@ npm run format:check
 
 Tests live in `test/` and run with Jest.
 
-- Use `npm test` to run the full suite.
+- Use `pnpm test` to run the full suite.
 - Tests cover book import/export round-trips and template handling.
 
 ## Consumers
@@ -106,8 +110,8 @@ When publishing a new version, update those consumers and run their tests.
 
 ## Release checklist
 
-- Ensure `npm run build` succeeds.
-- Ensure `npm test` passes.
+- Ensure `pnpm run build` succeeds.
+- Ensure `pnpm test` passes.
 - Update `package.json` version if needed (`npm version patch|minor|major`).
 - `npm publish` triggers `prepublishOnly`, which builds.
 - Push commits and tags.

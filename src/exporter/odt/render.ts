@@ -6,6 +6,12 @@ import {ODTExporterRender} from "@fiduswriter/document/exporter/odt/render"
 import {ODTExporterRichtext} from "@fiduswriter/document/exporter/odt/richtext"
 import type {ODTExporterStyles} from "@fiduswriter/document/exporter/odt/styles"
 
+interface Tag {
+    title: string
+    content?: unknown[]
+    block: XMLElement
+}
+
 export class ODTBookExporterRender extends ODTExporterRender {
     styles: ODTExporterStyles
     preamble: XMLElement | null
@@ -85,7 +91,13 @@ export class ODTBookExporterRender extends ODTExporterRender {
                 `chapter ${chapterIndex + 1}`
             )
         }
-        super.render(docContent, pmBib, settings, richtext, citations)
+        super.render(
+            docContent,
+            pmBib as false | FidusNode,
+            settings,
+            richtext,
+            citations
+        )
         this.bodyParts.push(this.text)
     }
 
@@ -121,7 +133,7 @@ export class ODTBookExporterRender extends ODTExporterRender {
         ]
         const usedTags: Array<{
             title: string
-            content?: unknown
+            content?: unknown[]
             block: XMLElement
         }> = []
         const ambles = [this.preamble, this.postamble].filter(
@@ -137,12 +149,12 @@ export class ODTBookExporterRender extends ODTExporterRender {
                 tags.forEach(tag => {
                     const tagString = tag.title
                     if (text.includes(`{${tagString}}`)) {
-                        usedTags.push(Object.assign({block}, tag))
+                        usedTags.push(Object.assign({block}, tag) as Tag)
                     }
                 })
             })
         })
-        usedTags.forEach(tag => this.inlineRender(tag))
+        usedTags.forEach(tag => this.inlineRender(tag as unknown as Tag))
     }
 
     assemble(): void {
